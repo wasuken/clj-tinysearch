@@ -1,5 +1,6 @@
 (ns clj-tinysearch.core
-  (:require [clj-tinysearch.index :refer :all]))
+  (:require [clj-tinysearch.index :refer :all]
+            [clj-tinysearch.util :refer :all]))
 
 (defn -main
   "I don't do a whole lot."

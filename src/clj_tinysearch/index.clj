@@ -1,5 +1,5 @@
-(ns clj-tinysearch.index)
-
+(ns clj-tinysearch.index
+  (:require [clj-tinysearch.util :refer :all]))
 
 ;;; util?
 (defn str-compare [^java.lang.String a ^java.lang.String b]
@@ -55,7 +55,7 @@
   (posting-to-string [this]
     (format "(%s,%s,%s)" (:doc-id this) (:term-frequenc this) (:positions this))))
 
-(defn new-posting [^java.lang.Long doc-id ^clojure.lang.ISeq positions]
+(defn new-posting [^java.lang.Long doc-id & positions]
   (->Posting doc-id positions (count positions)))
 
 (defrecord PostingsList [list]

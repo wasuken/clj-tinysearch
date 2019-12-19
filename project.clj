@@ -5,6 +5,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/java.jdbc "0.3.6"]
-                 [mysql/mysql-connector-java "8.0.18"]]
+                 [mysql/mysql-connector-java "8.0.18"]
+                 [eftest "0.5.9"]]
   :repl-options {:init-ns clj-tinysearch.core}
   :main "clj-tinysearch.core")

@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/java.jdbc "0.3.6"]
                  [mysql/mysql-connector-java "8.0.18"]]
-  :repl-options {:init-ns clj-tinysearch.core})
+  :repl-options {:init-ns clj-tinysearch.core}
+  :main "clj-tinysearch.core")

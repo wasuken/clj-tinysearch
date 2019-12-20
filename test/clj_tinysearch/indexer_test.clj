@@ -6,8 +6,6 @@
             [clj-tinysearch.index :refer :all])
   (:import [java.io ByteArrayInputStream]))
 
-;;; will go to util
-
 (deftest update-test
   (testing "update index test"
     (let [collections ["Do you quarrel sir?" "Quarrel sir! no sir!" "No better." "Well sir"]
@@ -28,9 +26,6 @@
                                        0
                                        indexer
                                        collections)]
-      ;; (println (index-to-string expected-index))
-      ;; (println (index-to-string (:index actual-indexer)))
       (is (index-to-string expected-index)
           (index-to-string (:index actual-indexer)))
-      ;; (is (pl-to-string expected-index) (pl-to-string actual-index))
       )))

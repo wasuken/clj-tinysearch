@@ -1,9 +1,7 @@
-(ns clj-tinysearch.document_store
+(ns clj-tinysearch.document-store
   (:require [clj-tinysearch.util :refer :all]
             [clj-tinysearch.tokenizer :refer :all]
-            [clj-tinysearch.index :refer (->Index)]
-            [clj-tinysearch.index :refer [new-posting new-index]]
-            [clojure.java.jdbc "as" j]))
+            [clojure.java.jdbc :as j]))
 
 (defprotocol DocumentStoreBase
   (save [this title]))
@@ -11,5 +9,5 @@
 (defrecord DocumentStore [db]
   DocumentStoreBase
   (save [this title]
-    (let [result (j/insert! db :documents [title])]
-      (pritln result))))                ;必ずこける。けどresultの内容はみれる。
+    (let [result (j/insert! db :documents {"document_title" title})]
+      (:generated_key (first result)))))

@@ -5,17 +5,28 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [environ "1.1.0"]
-                 [org.clojure/java.jdbc "0.3.6"]
+                 [org.clojure/java.jdbc "0.7.10"]
                  [mysql/mysql-connector-java "8.0.18"]
                  [org.clojure/data.json "0.2.7"]
                  [eftest "0.5.9"]]
-  :profiles {:dev [:project/dev :profiles/dev]
-             :test [:project/test :profiles/test]
-             :profiles/dev  {}
-             :profiles/test {}
-             :project/dev {:source-paths ["src" "tool-src"]
-                           :dependencies [[midje "1.6.3"]]
-                           :plugins [[lein-auto "0.1.3"]]}
-             :project/test {}}
+  :plugins [[lein-environ "1.0.0"]]
+  :profiles {:dev        {:env {:db-classname "com.mysql.cj.jdbc.Driver"
+                                :db-type "mysql"
+                                :db-name "tinysearch"
+                                :db-user "root"
+                                :db-host "127.0.0.1"
+                                :db-password ""}}
+             :test       {:env {:db-classname "com.mysql.cj.jdbc.Driver"
+                                :db-type "mysql"
+                                :db-name "tinysearch"
+                                :db-user "root"
+                                :db-host "127.0.0.1"
+                                :db-password ""}}
+             :production {:env {:db-classname "com.mysql.cj.jdbc.Driver"
+                                :db-type "mysql"
+                                :db-name "tinysearch"
+                                :db-user "root"
+                                :db-host "127.0.0.1"
+                                :db-password ""}}}
   :repl-options {:init-ns clj-tinysearch.core}
   :main "clj-tinysearch.core")

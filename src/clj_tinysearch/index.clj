@@ -1,5 +1,6 @@
 (ns clj-tinysearch.index
-  (:require [clj-tinysearch.util :refer :all]))
+  (:require [clj-tinysearch.util :refer :all]
+            [clojure.data.json :as json]))
 
 ;;; util?
 (defn str-compare [^java.lang.String a ^java.lang.String b]
@@ -23,14 +24,15 @@
   )
 
 (defprotocol PostingBase
-  (posting-to-string [this])
-  )
+  (posting-to-string [this]))
 
 (defprotocol PostingsListBase
   (add [this posting])
   (add-if-eq-doc-id [this posting])
   (list-last [this])
-  (pl-to-string [this]))
+  (pl-to-string [this])
+  (to-json-string [this])
+  (json-string-add [this json-string]))
 
 (defrecord Index
     [^clojure.lang.IPersistentMap dictionary ^java.lang.Long total-docs-count]
@@ -50,10 +52,10 @@
 (defn new-index [] (->Index {} 0))
 
 (defrecord Posting
-    [^java.lang.Long doc-id ^clojure.lang.ISeq positions ^java.lang.Integer term-frequenc]
+    [^java.lang.Long doc-id ^clojure.lang.ISeq positions ^java.lang.Integer term-frequency]
   PostingBase
   (posting-to-string [this]
-    (format "(%s,%s,%s)" (:doc-id this) (:term-frequenc this) (:positions this))))
+    (format "(%s,%s,%s)" (:doc-id this) (:term-frequency this) (:positions this))))
 
 (defn new-posting [^java.lang.Long doc-id & positions]
   (->Posting doc-id positions (count positions)))
@@ -61,19 +63,26 @@
 (defrecord PostingsList [list]
   PostingsListBase
   (add [this posting]
-    (->PostingsList (conj (:list this) posting)))
+    (->PostingsList (concat (:list this) [posting])))
   (list-last [this] (last (:list this)))
   (add-if-eq-doc-id [this posting]
-    (let [last (list-last this)
-          list-remove-last-one (reverse (drop 1 (reverse (:list this))))]
-      (if (or (empty (:list this))
-              (not (= (:doc-id (list-last this)) (:doc-id posting))))
+    (let [list-remove-last-one (reverse (drop 1 (reverse (:list this))))]
+      (if (or (empty? (list-last this))
+              (not (= (:doc-id (list-last this))
+                      (:doc-id posting))))
         (add this posting)
-        (let [updated-last (->Posting (+ (:doc-id) 1)
-                                      (concat (:positions last) (:positions posting)))]
-          (->PostingsList (conj list-remove-last-one updated-last))))))
+        (let [updated-last (->Posting (:doc-id posting)
+                                      (concat (:positions (list-last this)) (:positions posting))
+                                      (inc (:term-frequency posting)))]
+          (->PostingsList (concat list-remove-last-one [updated-last]))))))
   (pl-to-string [this]
-    (clojure.string/join "=>" (map posting-to-string (:list this)))))
+    (clojure.string/join "=>" (map posting-to-string (:list this))))
+  (to-json-string [this]
+    (json/write-str (:list this)))
+  (json-string-add [this json-string]
+    (reduce (fn [pl x] (add pl x))
+            this
+            (json/read-str json-string))))
 
 (defn new-postings-list []
   (->PostingsList nil))

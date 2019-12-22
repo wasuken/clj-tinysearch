@@ -12,3 +12,4 @@ pom.xml.asc
 .hg/
 *.sqlite
 _index_data/
+testdata/

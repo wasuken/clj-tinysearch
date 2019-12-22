@@ -4,11 +4,15 @@
             [clj-tinysearch.tokenizer :refer :all]
             [clj-tinysearch.index-writer :refer :all]
             [clj-tinysearch.document-store :refer :all]
+            [clj-tinysearch.searcher :refer :all]
             [environ.core :refer [env]]))
 
 (defprotocol EngineBase
   (add-document [this title reader])
-  (e-flush [this]))
+  (e-flush [this])
+  (engine-search [this query limit]))
+
+(defrecord SearchResult [doc-id score title])
 
 (defrecord Engine [tokenizer indexer document-store index-dir]
   EngineBase
@@ -20,7 +24,14 @@
                 (:index-dir this))
       ))
   (e-flush [this]
-    (iw-flush (->IndexWriter (:index-dir this)) (:index (:indexer this)))))
+    (iw-flush (->IndexWriter (:index-dir this)) (:index (:indexer this))))
+  (engine-search [this query limit]
+    (map #(->SearchResult (:doc-id %)
+                          (:score %)
+                          (fetch-title (:document-store this) (:doc-id %)))
+         (search-top-k (new-searcher (:index-dir this))
+                       (text->word-seq query)
+                       limit))))
 
 (defn new-engine [db]
   (let [tk (->Tokenizer)]

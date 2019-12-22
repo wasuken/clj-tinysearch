@@ -2,22 +2,6 @@
   (:require [clj-tinysearch.util :refer :all]
             [clojure.data.json :as json]))
 
-;;; util?
-(defn str-compare [^java.lang.String a ^java.lang.String b]
-  (if (= (count a) (count b))
-    (compare a b)
-    (let [a-one (first (take 1 a))
-          b-one (first (take 1 b))
-          a-minus-b (- (int a-one) (int b-one))]
-      (cond (zero? a-minus-b)
-            (cond (empty? (drop 1 a)) 1
-                  (empty? (drop 1 b)) -1
-                  :else (str-compare (clojure.string/join (drop 1 a))
-                                     (clojure.string/join (drop 1 b)))
-                  )
-            :else a-minus-b))))
-
-
 ;;; logic
 (defprotocol IndexBase
   (index-to-string [this])
@@ -32,7 +16,22 @@
   (list-last [this])
   (pl-to-string [this])
   (to-json-string [this])
-  (json-string-add [this json-string]))
+  (json-string-add [this json-string])
+  (open-cursor [this query-list]))
+
+(defprotocol CursorBase
+  (cur-to-string [this])
+  (cur-next [this]))
+
+(defrecord Cursor [postings-list pointer]
+  CursorBase
+  (cur-to-string [this]
+    (posting-to-string (:current this)))
+  (cur-next [this]
+    (if (nil? (nth (:postings-list this) (inc (:pointer this))))
+      nil
+      (->Cursor (:postings-list this)
+              (inc (:pointer this))))))
 
 (defrecord Index
     [^clojure.lang.IPersistentMap dictionary ^java.lang.Long total-docs-count]
@@ -82,7 +81,9 @@
   (json-string-add [this json-string]
     (reduce (fn [pl x] (add pl x))
             this
-            (json/read-str json-string))))
+            (json/read-str json-string)))
+  (open-cursor [this query-list]
+    (->Cursor this 0)))
 
 (defn new-postings-list []
   (->PostingsList nil))

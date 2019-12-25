@@ -1,6 +1,5 @@
 (ns clj-tinysearch.indexer-test
   (:require [clojure.test :refer :all]
-            [clj-tinysearch.test-util :refer :all]
             [clj-tinysearch.indexer :refer :all]
             [clj-tinysearch.util :refer :all]
             [clj-tinysearch.tokenizer :refer :all]
@@ -22,11 +21,10 @@
                                   4)
           actual-indexer (reduce-indexed (fn [idxr i x]
                                            (idxr-update idxr
-                                                      i
-                                                      (ByteArrayInputStream. (.getBytes x))))
-                                       0
-                                       indexer
-                                       collections)]
-      (assert-eq (index-to-string expected-index)
-                 (index-to-string (:index actual-indexer)))
-      )))
+                                                        i
+                                                        (ByteArrayInputStream. (.getBytes x))))
+                                         0
+                                         indexer
+                                         collections)]
+      (is (= (index-to-string expected-index)
+             (index-to-string (:index actual-indexer)))))))

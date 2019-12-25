@@ -3,13 +3,16 @@
             [clj-tinysearch.index :refer :all]
             [clj-tinysearch.index-reader :refer :all]))
 
+(defn log2 [n]
+  (double (/ (Math/log n) (Math/log 2))))
+
 (defn calc-tf [term-count]
   (if (<= term-count 0)
     0
-    (+ 1 (Math/log (double term-count)))))
+    (double (+ 1.0 (double (log2 (double term-count)))))))
 
 (defn calc-idf [n df]
-  (Math/log (/ (double n) (double df))))
+  (double (log2 (double (/ (double n) (double df))))))
 
 
 (defprotocol TopDocsBase
@@ -37,63 +40,113 @@
 (defrecord Searcher [index-reader cursors]
   SearcherBase
   (search-top-k [this query-list limit]
-    (let [results (take limit (sort (comp (fn [x y] (> (:score x) (:score y))))
-                                    (searcher-search this query-list)))]
-      (->TopDocs (count results) results)))
+    (let [s-results (sort (comp (fn [x y] (> (:score x) (:score y))))
+                              (searcher-search this query-list))
+          take-results (take limit s-results)]
+      ;; (println "#################")
+      ;; (println take-results)
+      ;; (println "#################")
+      (->TopDocs (count s-results) take-results)))
   (searcher-search [this query-list]
-    (let [new-this (open-cursors this query-list)]
-      (if (empty? (:cursors new-this))
+    (let [new-this (atom (open-cursors this query-list))]
+      (if (empty? (:cursors @new-this))
         []
-        (let [first-crs (first (:cursors new-this))
-              one-drop-crs (drop 1 (:cursors new-this))]
+        (let [first-crs (first (:cursors @new-this))
+              one-drop-crs (atom (drop 1 (:cursors @new-this)))]
           (letfn [(cursor-next-doc [cur doc-id]
                     (if (and (not (nil? cur))
-                             (not (nil? (nth (:postings-list cur) (:pointer cur))))
-                             (< (:pointer cur) doc-id))
-                      (cursor-next-doc (nth (:postings-list cur)
-                                            (inc (:pointer cur)))
+                             (not (nil? (nth (:list (:postings-list cur))
+                                             (:pointer cur)
+                                             nil)))
+                             (< (:doc-id (nth (:list (:postings-list cur))
+                                              (:pointer cur)))
+                                doc-id))
+                      (cursor-next-doc (cur-next cur)
                                        doc-id)
                       cur))
                   (search-next-doc [cur]
-                    (find-if #(cond (empty? (cursor-next-doc %))
-                                    (reduced {:end true})
-                                    (not (= (:doc-id cur) (:doc-id %)))
-                                    (reduced {:next-doc-id (:doc-id cur)}))
-                             one-drop-crs))
+                    ;; (println cur)
+                    (let [cur-doc-id (:doc-id (nth (:list (:postings-list cur))
+                                                   (:pointer cur)
+                                                   nil))
+                          find-result (loop [crs-list @one-drop-crs
+                                             pointer 0]
+                                        (if (not (empty? crs-list))
+                                          (let [crs-doc-id (:doc-id (nth (:list (:postings-list (first crs-list)))
+                                                                         (:pointer (first crs-list))
+                                                                         nil))
+                                                next-crs (cursor-next-doc (first crs-list) cur-doc-id)
+                                                next-crs-doc-id (:doc-id (nth (:list (:postings-list next-crs))
+                                                                              (:pointer next-crs)
+                                                                              nil))]
+                                            (println "======================")
+                                            (println one-drop-crs)
+                                            (println pointer)
+                                            (reset! one-drop-crs (assoc (vec @one-drop-crs) pointer next-crs))
+                                            (println @one-drop-crs)
+                                            (reset! new-this (->Searcher (:index-reader @new-this)
+                                                                          (assoc (vec (:cursors @new-this))
+                                                                                 (inc pointer)
+                                                                                 next-crs)))
+                                            (println "======================")
+                                            (cond (empty? next-crs)
+                                                  {:end true}
+                                                  (not (= cur-doc-id next-crs-doc-id))
+                                                  {:next-doc-id next-crs-doc-id}
+                                                  :else (recur (drop 1 crs-list)
+                                                               (inc pointer))))))]
+                      (println find-result)
+                      (if (empty? find-result)
+                        {:next-doc-id 0}
+                        find-result)))
                   (find-shortest-posting-list [cur score-docs]
-                    (let [search-result (search-next-doc cur)]
-                      (if (or (empty? cur)
-                              (:end search-result))
-                        score-docs
-                        (if (> (:next-doc-id search-result) 0)
-                          (let [new-cur (search-next-doc cur)]
-                            (if (empty? new-cur)
-                              score-docs
-                              (find-shortest-posting-list new-cur score-docs)))
-                          (find-shortest-posting-list (cur-next cur)
-                                                      (conj score-docs
-                                                            (->ScoreDoc (:doc-id cur)
-                                                                        (:calc-score this))))))))]
-            (find-shortest-posting-list first-crs)))))
+                    (if (empty? cur)
+                      score-docs
+                      (let [search-result (search-next-doc cur)]
+                        (if (:end search-result)
+                          score-docs
+                          (if (> (:next-doc-id search-result) 0)
+                            (let [new-cur (cursor-next-doc cur (:next-doc-id search-result))]
+                              ;; (println search-result)
+                              ;; (println (:next-doc-id search-result))
+                              ;; (println new-cur)
+                              (if (or (empty? new-cur)
+                                      (empty? (nth (:list (:postings-list new-cur))
+                                                   (:pointer new-cur)
+                                                   nil)))
+                                score-docs
+                                (find-shortest-posting-list new-cur score-docs)))
+                            (find-shortest-posting-list (cur-next cur)
+                                                        (conj score-docs
+                                                              (->ScoreDoc (:doc-id (nth (:list (:postings-list cur))
+                                                                                        (:pointer cur)))
+                                                                          (calc-score @new-this)))))))))]
+            (find-shortest-posting-list first-crs [])))))
     )
   ;; return value is different from origininal.
   (open-cursors [this query-list]
-    (let [pls (postings-not-empty-lists (:index-reader this) query-list)]
-      (if (zero? (count pls))
+    (let [result-map (postings-not-empty-lists (:index-reader this) query-list)]
+      (if (zero? (count (:pls result-map)))
         this
-        (->Searcher (:index-reader)
-                    (sort (comp (fn [x y] (< (count x) (count y))))
-                          pls)))))
+        (->Searcher (:index-reader result-map)
+                    (map #(open-cursor %)
+                         (sort (comp (fn [x y] (< (count x) (count y))))
+                               (:pls result-map)))))))
   (calc-score [this]
     (reduce (fn [score cursor]
-              (let [term-freq (:term-frequency (:term-frequency (nth (:list (:postings-list cursor))
-                                                                     (:pointer cursor))))
-                    doc-count (count (:posting-list cursor))
-                    tdc (total-doc-count (:index-reader this))]
-                (* (calc-tf term-freq) (calc-idf tdc doc-count))))
+              (let [term-freq (:term-frequency (nth (:list (:postings-list cursor))
+                                                    (:pointer cursor)
+                                                    nil))
+                    doc-count (count (:list (:postings-list cursor)))
+                    tdc (:doc-count-cache (total-doc-count (:index-reader this)))]
+                ;; (println "__________________")
+                ;; (println term-freq)
+                ;; (println doc-count)
+                ;; (println tdc)
+                ;; (println "__________________")
+                (+ score (* (calc-tf term-freq) (calc-idf tdc doc-count)))))
             0.0
             (:cursors this))))
 
 (defn new-searcher [path]
   (->Searcher (new-index-reader path) []))
-

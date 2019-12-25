@@ -13,13 +13,6 @@
     (map #(clojure.java.io/delete-file (.getPath %))
          (reverse (file-seq (clojure.java.io/file path))))))
 
-(defn find-if [f call]
-  (reduce (fn [x y] (if (f y)
-                      (reduced y)
-                      nil))
-          nil
-          call))
-
 (defn str-compare [^java.lang.String a ^java.lang.String b]
   (if (= (count a) (count b))
     (compare a b)

@@ -29,9 +29,9 @@
     (map #(->SearchResult (:doc-id %)
                           (:score %)
                           (fetch-title (:document-store this) (:doc-id %)))
-         (search-top-k (new-searcher (:index-dir this))
-                       (text->word-seq query)
-                       limit))))
+         (:score-docs (search-top-k (new-searcher (:index-dir this))
+                                    (text->word-seq query)
+                                    limit)))))
 
 (defn new-engine [db]
   (let [tk (->Tokenizer)]

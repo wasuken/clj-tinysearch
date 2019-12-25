@@ -17,7 +17,7 @@
   (pl-to-string [this])
   (to-json-string [this])
   (json-string-add [this json-string])
-  (open-cursor [this query-list]))
+  (open-cursor [this]))
 
 (defprotocol CursorBase
   (cur-to-string [this])
@@ -28,7 +28,9 @@
   (cur-to-string [this]
     (posting-to-string (:current this)))
   (cur-next [this]
-    (if (nil? (nth (:postings-list this) (inc (:pointer this))))
+    (if (nil? (nth (:list (:postings-list this))
+                   (inc (:pointer this))
+                   nil))
       nil
       (->Cursor (:postings-list this)
               (inc (:pointer this))))))
@@ -54,7 +56,7 @@
     [^java.lang.Long doc-id ^clojure.lang.ISeq positions ^java.lang.Integer term-frequency]
   PostingBase
   (posting-to-string [this]
-    (format "(%s,%s,%s)" (:doc-id this) (:term-frequency this) (:positions this))))
+    (format "(%s,%s,%s)" (:doc-id this) (:term-frequency this) (pr-str (:positions this)))))
 
 (defn new-posting [^java.lang.Long doc-id & positions]
   (->Posting doc-id positions (count positions)))
@@ -82,7 +84,7 @@
     (reduce (fn [pl x] (add pl x))
             this
             (json/read-str json-string)))
-  (open-cursor [this query-list]
+  (open-cursor [this]
     (->Cursor this 0)))
 
 (defn new-postings-list []

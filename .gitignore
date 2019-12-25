@@ -13,3 +13,4 @@ pom.xml.asc
 *.sqlite
 _index_data/
 testdata/
+.cider-repl-history

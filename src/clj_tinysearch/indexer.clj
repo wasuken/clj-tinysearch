@@ -13,7 +13,7 @@
     (let [added-indexer (reduce-indexed (fn [idxr i w]
                                           (->Indexer (->Index (merge-with (fn [old new]
                                                                             (add-if-eq-doc-id old (first (:list new))))
-                                                                 (:dictionary (:index idxr))
+                                                                (:dictionary (:index idxr))
                                                                  {w (new-postings-list (new-posting doc-id i))})
                                                               (:total-docs-count (:index idxr)))
                                                      (:tokenizer idxr)))

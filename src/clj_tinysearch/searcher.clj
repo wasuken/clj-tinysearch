@@ -43,9 +43,6 @@
     (let [s-results (sort (comp (fn [x y] (> (:score x) (:score y))))
                               (searcher-search this query-list))
           take-results (take limit s-results)]
-      ;; (println "#################")
-      ;; (println take-results)
-      ;; (println "#################")
       (->TopDocs (count s-results) take-results)))
   (searcher-search [this query-list]
     (let [new-this (atom (open-cursors this query-list))]
@@ -65,7 +62,6 @@
                                        doc-id)
                       cur))
                   (search-next-doc [cur]
-                    ;; (println cur)
                     (let [cur-doc-id (:doc-id (nth (:list (:postings-list cur))
                                                    (:pointer cur)
                                                    nil))
@@ -79,23 +75,17 @@
                                                 next-crs-doc-id (:doc-id (nth (:list (:postings-list next-crs))
                                                                               (:pointer next-crs)
                                                                               nil))]
-                                            (println "======================")
-                                            (println one-drop-crs)
-                                            (println pointer)
                                             (reset! one-drop-crs (assoc (vec @one-drop-crs) pointer next-crs))
-                                            (println @one-drop-crs)
                                             (reset! new-this (->Searcher (:index-reader @new-this)
                                                                           (assoc (vec (:cursors @new-this))
                                                                                  (inc pointer)
                                                                                  next-crs)))
-                                            (println "======================")
                                             (cond (empty? next-crs)
                                                   {:end true}
                                                   (not (= cur-doc-id next-crs-doc-id))
                                                   {:next-doc-id next-crs-doc-id}
                                                   :else (recur (drop 1 crs-list)
                                                                (inc pointer))))))]
-                      (println find-result)
                       (if (empty? find-result)
                         {:next-doc-id 0}
                         find-result)))
@@ -107,9 +97,6 @@
                           score-docs
                           (if (> (:next-doc-id search-result) 0)
                             (let [new-cur (cursor-next-doc cur (:next-doc-id search-result))]
-                              ;; (println search-result)
-                              ;; (println (:next-doc-id search-result))
-                              ;; (println new-cur)
                               (if (or (empty? new-cur)
                                       (empty? (nth (:list (:postings-list new-cur))
                                                    (:pointer new-cur)
@@ -139,11 +126,6 @@
                                                     nil))
                     doc-count (count (:list (:postings-list cursor)))
                     tdc (:doc-count-cache (total-doc-count (:index-reader this)))]
-                ;; (println "__________________")
-                ;; (println term-freq)
-                ;; (println doc-count)
-                ;; (println tdc)
-                ;; (println "__________________")
                 (+ score (* (calc-tf term-freq) (calc-idf tdc doc-count)))))
             0.0
             (:cursors this))))

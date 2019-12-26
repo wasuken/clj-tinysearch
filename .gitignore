@@ -11,6 +11,6 @@ pom.xml.asc
 .hgignore
 .hg/
 *.sqlite
-_index_data/
+_index_data*/
 testdata/
 .cider-repl-history
